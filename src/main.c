@@ -27,6 +27,7 @@ struct connectionParams
   int width;
   int height;
   int fps;
+  int udpport;
 };
 
 struct threadParamsClient
@@ -76,7 +77,7 @@ void *threadFunctionServer(struct threadParamsServer *tp)
       t.tv_nsec=1000000L*((unsigned int) (msDelay));
       printf  ("Nueva conexión:  %s\n", inet_ntoa(their_addr.sin_addr));
       printf  ("Puerto Cliente:  %u\n", ntohs(their_addr.sin_port));
-      their_addr.sin_port=htons(32000);
+      their_addr.sin_port=htons(tp->cp.udpport);
     	if ((sockudp = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
     	{
     		perror("Error en creación de socket");
@@ -167,10 +168,9 @@ int main (int argc, char *argv[])
   int sockfd;			/* File Descriptor del socket por el que el servidor "escucha" conexiones*/
   struct sockaddr_in my_addr;	/* contendrá la dirección IP y el número de puerto local */
   struct sockaddr_in their_addr;
-  struct sockaddr_in servaddr;
   int sockdup;
   int sockudp;
-  int size;
+  socklen_t size;
   struct connectionParams cp;
   int numbytes;/*Contendrá el número de bytes recibidos por read () */
   char bufTCP[MAXDATASIZE_TCP];  /* Buffer donde se reciben los datos de read ()*/
@@ -359,7 +359,12 @@ int main (int argc, char *argv[])
                                   exit(1);
                                 }
                                 cp.fps=atoi(bufTCP);
-
+                                if( (numbytes=  recv(sockdup,bufTCP,sizeof(bufTCP),0)) ==-1)
+                                {
+                                  perror("Error de lectura en el socket");
+                                  exit(1);
+                                }
+                                cp.udpport=atoi(bufTCP);
                                 /*SE RECIBIERON LOS PARÁMETROS DE CONEXIÓN CORRECTAMENTE=>INICIAR THREAD*/
                                 tp.shmPtr=shmPtr;
                                 tp.their_addr=their_addr;
@@ -391,6 +396,7 @@ int main (int argc, char *argv[])
                                             if(numbytes==0)
                                             {
                                              printf("Conexión finalizada con %s\n",inet_ntoa(their_addr.sin_addr) );
+                                             //printf("Cantidad de clientes: %d", cantReaders);
                                              pthread_cancel(thread);
                                              pthread_join(thread,NULL);
                                              close(sockdup);
@@ -423,7 +429,7 @@ int main (int argc, char *argv[])
 
 
     /*CLIENT*/
-    if(argc == 6)
+    if(argc == 7)
     {
 
             size=sizeof(struct sockaddr);
@@ -431,6 +437,7 @@ int main (int argc, char *argv[])
             send(sockfd,argv[3],sizeof(bufTCP),0);//WIDTH
             send(sockfd,argv[4],sizeof(bufTCP),0);//HEIGHT
             send(sockfd,argv[5],sizeof(bufTCP),0);//FPS
+            send(sockfd,argv[6],sizeof(bufTCP),0);//PUERTO PARA RECIBIR POR UDP
 
             /*INICIALIZACIÓN DEL THREAD PARA CONEXIÓN TCP*/
             tpc.fd=sockfd;
@@ -443,11 +450,12 @@ int main (int argc, char *argv[])
               perror("Error en creación de socket");
               exit(1);
             }
-            bzero(&servaddr,sizeof(servaddr));
-            servaddr.sin_family = AF_INET;
-            servaddr.sin_addr.s_addr=inet_addr(argv[1]);
-            servaddr.sin_port=htons(32000);
-            bind(sockudp,(struct sockaddr *)&servaddr,sizeof(servaddr));
+
+            bzero(&my_addr,sizeof(my_addr));
+            my_addr.sin_family = AF_INET;
+            my_addr.sin_addr.s_addr=inet_addr(argv[1]);
+            my_addr.sin_port=htons(atoi(argv[6]));
+            bind(sockudp,(struct sockaddr *)&my_addr,sizeof(my_addr));
 
             /*CREACIÓN DE VENTANA Y FRAME DONDE SE ALMACENARA LA INFORMACIÓN RECIBIDA POR UDP*/
             cvNamedWindow("Client Video",0);
@@ -460,7 +468,7 @@ int main (int argc, char *argv[])
 					      numbytes=recvfrom(sockudp,bufUDP,MAXDATASIZE_UDP+1,0,(struct sockaddr *)&their_addr,&size);
                 //printf("NumBytes: %d\n",numbytes);
                 if(numbytes==MAXDATASIZE_UDP+1)//SI EL PAQUETE LLEGÓ ENTERO
-					         memcpy(&(frame->imageData[bufUDP[0]*MAXDATASIZE_UDP]),&(bufUDP[1]),MAXDATASIZE_UDP); //LA POSICIÓN 0 DEL BUFFER CONTIENE EL ÍNDICE DEL PAQUETE DENTRO DEL FRAME
+					           memcpy(&(frame->imageData[bufUDP[0]*MAXDATASIZE_UDP]),&(bufUDP[1]),MAXDATASIZE_UDP); //LA POSICIÓN 0 DEL BUFFER CONTIENE EL ÍNDICE DEL PAQUETE DENTRO DEL FRAME
               }
                 /*SE MUESTRA LA IMAGEN RECIBIDA*/
                 cvShowImage("Client Video",frame);
