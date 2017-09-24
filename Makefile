@@ -4,7 +4,7 @@
 #dependencias dinámicas
 #gcc -I inc -MM src/main.c >out/obj/main.d
 
-CFLAGS = `pkg-config --cflags opencv`-lpthread
+CFLAGS = `pkg-config --cflags opencv` -lpthread
 LIBS = `pkg-config --libs opencv`
 
 #variables
@@ -37,11 +37,11 @@ vpath %.o $(OBJ_PATH)
 #$< es la variable con la dependencia
 #$@ es la variable con el goal
 %.o: %.c
-	gcc -I $(INC_PATH) -c $< -o $(OBJ_PATH)/$@
+	g++ -I $(INC_PATH) -c $< -o $(OBJ_PATH)/$@
 
 #regla de linkeo, sólo los objetos
 $(OUT_PATH)/$(APP): $(OBJS)
-	gcc $(OBJ_FILES) $(CFLAGS) $(LIBS) -o $(OUT_PATH)/$(APP)
+	g++ $(OBJ_FILES) $(CFLAGS) $(LIBS) -o $(OUT_PATH)/$(APP)
 
 #regla de ejecución
 run: $(OUT_PATH)/$(APP)

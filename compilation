@@ -1,0 +1,15 @@
+g++ -c sems.c
+g++ -c sock-lib.c
+g++ -c main.c
+g++ -o Video main.o sems.o sock-lib.o `pkg-config --cflags opencv` -lpthread `pkg-config --libs opencv`
+
+
+RUN:
+
+./Video server
+
+./Video 127.0.0.1 3128 640 480 30 32000 127.0.0.1
+
+./Video 127.0.0.1 3128 640 480 30 32005 127.0.0.1
+
+./Video 127.0.0.1 3128 640 480 30 32009 127.0.0.1
